@@ -1,21 +1,23 @@
 #include "YasivWindow.h"
 
 YasivWindow::YasivWindow(YasivApp* app, IWICImagingFactory* factory)
-: m_pApp(app)
-, m_hWnd(nullptr)
-, m_Action(NONE)
-, m_Image(factory)
-, m_bSnap(true)
-, m_bActionInWindow(false)
-, m_iImagePosX(0)
-, m_iImagePosY(0)
+	: m_pApp(app)
+	, m_hWnd(nullptr)
+	, m_Action(NONE)
+	, m_Image(factory)
+	, m_bSnap(true)
+	, m_bActionInWindow(false)
+	, m_bDrawTransparent(false)
+	, m_iImagePosX(0)
+	, m_iImagePosY(0)
 {
 	int w = 640, h = 480;
     // Create window
     HWND hWnd = CreateWindow(
+	//	WS_EX_LAYERED,
         L"Yasiv",
         L"Yet Another Simple Image Viewer",
-        WS_POPUP | WS_VISIBLE | WS_EX_NOPARENTNOTIFY | WS_EX_TOOLWINDOW,
+		WS_POPUP | WS_VISIBLE | WS_EX_NOPARENTNOTIFY | WS_EX_TOOLWINDOW,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         w,
@@ -41,8 +43,22 @@ YasivWindow::YasivWindow(YasivApp* app, IWICImagingFactory* factory)
 		int x = monitorinfo.rcWork.left + (monitorinfo.rcWork.right - monitorinfo.rcWork.left - w) / 2;
 		int y = monitorinfo.rcWork.top + (monitorinfo.rcWork.bottom - monitorinfo.rcWork.top - h) / 2;
 
-		MoveWindow(hWnd, x, y, w, h, TRUE);
-	}	
+		UpdateWindow(x, y, w, h);
+	}
+	else
+	{
+		LPTSTR buf = nullptr;
+		DWORD size = FormatMessage(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ARGUMENT_ARRAY,
+			nullptr,
+			GetLastError(),
+			LANG_NEUTRAL,
+			(LPTSTR)&buf,
+			0,
+			nullptr);
+		std::cerr << buf << std::endl;
+		LocalFree((HLOCAL)buf);
+	}
 }
 
 YasivWindow::~YasivWindow()
@@ -68,14 +84,14 @@ HRESULT YasivWindow::OpenImage(LPWSTR pszFileName)
 				int tw = nw, th = wh;
 				KeepImageRatio(tw, th);
 				m_Image.Resize(tw, th);
-				MoveWindow(m_hWnd, WorkArea.left+(ww-tw)/2, WorkArea.top+(wh-th)/2, tw, th, TRUE);
+				UpdateWindow(WorkArea.left + (ww - tw) / 2, WorkArea.top + (wh - th) / 2, tw, th);
 			}
 			else
 			{
 				int tw = ww, th = nh;
 				KeepImageRatio(tw, th);
 				m_Image.Resize(tw, th);
-				MoveWindow(m_hWnd, WorkArea.left+(ww-tw)/2, WorkArea.top+(wh-th)/2, tw, th, TRUE);
+				UpdateWindow(WorkArea.left + (ww - tw) / 2, WorkArea.top + (wh - th) / 2, tw, th);
 			}
 			m_iImagePosX = m_iImagePosY = 0;
 		}
@@ -201,26 +217,26 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					m_rcMoving.left += dX;
 					w -= dX;
 					KeepImageRatioH(w, h);
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case RESIZE_TOP:
 					dY = SnapY(m_rcMoving.top+dY) - m_rcMoving.top;
 					m_rcMoving.top += dY;
 					h -= dY;
 					KeepImageRatioW(w, h);
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case RESIZE_RIGHT:
 					dX = SnapX(m_rcMoving.right+dX) - m_rcMoving.right;
 					w += dX;
 					KeepImageRatioH(w, h);
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case RESIZE_BOTTOM:
 					dY = SnapY(m_rcMoving.bottom+dY) - m_rcMoving.bottom;
 					h += dY;
 					KeepImageRatioW(w, h);
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case RESIZE_TOPLEFT:
 					dX = SnapX(m_rcMoving.left+dX) - m_rcMoving.left;
@@ -229,7 +245,7 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					KeepImageRatio(w, h);
 					m_rcMoving.left = m_rcMoving.right - w; 
 					m_rcMoving.top =  m_rcMoving.bottom - h;
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case RESIZE_TOPRIGHT:
 					dX = SnapX(m_rcMoving.right+dX) - m_rcMoving.right;
@@ -237,7 +253,7 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					w += dX; h -= dY;
 					KeepImageRatio(w, h);
 					m_rcMoving.top =  m_rcMoving.bottom - h;
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case RESIZE_BOTTOMLEFT:
 					dX = SnapX(m_rcMoving.left+dX) - m_rcMoving.left;
@@ -245,14 +261,14 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					w -= dX; h += dY;
 					KeepImageRatio(w, h);
 					m_rcMoving.left = m_rcMoving.right - w; 
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case RESIZE_BOTTOMRIGHT:
 					dX = SnapX(m_rcMoving.right+dX) - m_rcMoving.right;
 					dY = SnapY(m_rcMoving.bottom+dY) - m_rcMoving.bottom;
 					w += dX; h += dY;
 					KeepImageRatio(w, h);
-					MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, TRUE);
+					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
 					break;
 				case MOVING:
 				{
@@ -296,13 +312,7 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 {
 	switch(wParam)
-	{
-/*		case 'B': // Test blur
-		{
-			m_Image.TestBlur();
-			InvalidateRect(hWnd, nullptr, FALSE);
-			return 0;
-		}*/		
+	{	
 		case '1': // Reset to initial size
 		{
 			UINT w, h;
@@ -313,7 +323,7 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 
 				RECT rcWnd; 
 				GetWindowRect(hWnd, &rcWnd);
-				MoveWindow(hWnd, rcWnd.left, rcWnd.top, w, h, TRUE);
+				UpdateWindow(rcWnd.left, rcWnd.top, w, h);
 			}
 			break;
 		}
@@ -345,7 +355,7 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 					}
 					else if(x + nw > WorkArea.right)
 						x = WorkArea.right - nw;
-					MoveWindow(hWnd, x, WorkArea.top, nw, wh, TRUE);
+					UpdateWindow(x, WorkArea.top, nw, wh);
 				}
 				else
 				{
@@ -358,7 +368,7 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 					}
 					else if(y + nh > WorkArea.bottom)
 						y = WorkArea.bottom - nh;
-					MoveWindow(hWnd, WorkArea.left, y, ww, nh, TRUE);
+					UpdateWindow(WorkArea.left, y, ww, nh);
 				}
 				m_iImagePosX = m_iImagePosY = 0;
 			}
@@ -388,7 +398,7 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 				else if(y + nh > WorkArea.bottom)
 					y = WorkArea.bottom - nh;
 
-				MoveWindow(hWnd, WorkArea.left, y, ww, nh, TRUE);
+				UpdateWindow(WorkArea.left, y, ww, nh);
 				m_iImagePosX = m_iImagePosY = 0;
 			}
 			return 0;
@@ -410,11 +420,10 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 					LONG ww, wh;
 					ww = rcWnd.right-rcWnd.left;
 					wh = rcWnd.bottom-rcWnd.top;
-					MoveWindow(hWnd, rcWnd.left, rcWnd.top, wh, ww, TRUE);
+					UpdateWindow(rcWnd.left, rcWnd.top, wh, ww);
 					int tmp = m_iImagePosX;
 					m_iImagePosX = m_iImagePosY;
 					m_iImagePosY = ww - iw - tmp;
-					InvalidateRect(hWnd, nullptr, FALSE);
 				}
 			}
 			break;
@@ -434,9 +443,8 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 				int w = rcWnd.right-rcWnd.left, h = rcWnd.bottom-rcWnd.top;
 				KeepImageRatio(w, h);
 				m_Image.Resize(w, h);
-				MoveWindow(hWnd, rcWnd.left, rcWnd.top, w, h, TRUE);
+				UpdateWindow(rcWnd.left, rcWnd.top, w, h);
 				m_iImagePosX = m_iImagePosY = 0;
-				InvalidateRect(hWnd, nullptr, FALSE);
 			}
 			else
 				MessageBox(nullptr, L"Failed to load image, select another one.", L"Application Error", MB_ICONEXCLAMATION | MB_OK);
@@ -460,11 +468,10 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 					LONG ww, wh;
 					ww = rcWnd.right-rcWnd.left;
 					wh = rcWnd.bottom-rcWnd.top;
-					MoveWindow(hWnd, rcWnd.left, rcWnd.top, wh, ww, TRUE);
+					UpdateWindow(rcWnd.left, rcWnd.top, wh, ww);
 					int tmp = m_iImagePosX;
 					m_iImagePosX = wh - ih - m_iImagePosY;
 					m_iImagePosY = tmp;
-					InvalidateRect(hWnd, nullptr, FALSE);
 				}
 			}
 			break;
@@ -473,6 +480,27 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 		{
 			m_pApp->AllWindowsToTop();
 			return 0;
+		}
+		case 'T':
+		{
+			m_bDrawTransparent = !m_bDrawTransparent;
+
+			if (m_bDrawTransparent)
+			{
+				m_Image.PremultiplyAlpha();
+				SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED);
+			}
+			else
+				SetWindowLong(hWnd, GWL_EXSTYLE, 0);
+			
+			// Update the window in the same position
+			RECT rcWnd;
+			GetWindowRect(hWnd, &rcWnd);
+			InvalidateRect(hWnd, nullptr, TRUE);
+			int w = rcWnd.right - rcWnd.left, h = rcWnd.bottom - rcWnd.top;
+			UpdateWindow(rcWnd.left, rcWnd.top, w, h);
+			
+			break;
 		}
 		case 'V': // Resize to maximize the vertical size
 		{
@@ -498,7 +526,7 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 				else if(x + nw > WorkArea.right)
 					x = WorkArea.right - nw;
 
-				MoveWindow(hWnd, x, WorkArea.top, nw, wh, TRUE);
+				UpdateWindow(x, WorkArea.top, nw, wh);
 				m_iImagePosX = m_iImagePosY = 0;
 			}
 			return 0;
@@ -525,6 +553,17 @@ LRESULT YasivWindow::OnPaint(HWND hWnd)
 		HRESULT hr = S_OK;
 		hr = GetClientRect(hWnd, &rcClient) ? S_OK: E_FAIL;
 		int cw = rcClient.right-rcClient.left, ch = rcClient.bottom-rcClient.top;
+		if (!m_bDrawTransparent && SUCCEEDED(hr))
+		{
+			HBRUSH hbBk, hbrOld;
+			hbBk = CreateSolidBrush(0xFF000000);
+			hbrOld = (HBRUSH)SelectObject(hdc, hbBk);
+
+			Rectangle(hdc, 0, 0, cw, ch);
+
+			SelectObject(hdc, hbrOld);
+			DeleteObject(hbBk);
+		}
 
         // Create a memory device context
         HDC hdcMem = CreateCompatibleDC(nullptr);
@@ -562,7 +601,37 @@ LRESULT YasivWindow::OnPaint(HWND hWnd)
     }
 
     return lRet;
-} 
+}
+
+void YasivWindow::UpdateWindow(int x, int y, int w, int h)
+{
+	if (!m_bDrawTransparent)
+	{
+		MoveWindow(m_hWnd, x, y, w, h, TRUE);
+		return;
+	}
+
+	HDC hdcScreen = GetDC(NULL);
+	HDC hdcMem = CreateCompatibleDC(hdcScreen);
+	HBITMAP hbmOld = SelectBitmap(hdcMem, m_Image.GetBitmap());
+
+	POINT ptScreen { x, y };
+	SIZE size { w, h };
+	POINT ptSrc { m_iImagePosX, m_iImagePosY };
+
+	BLENDFUNCTION blend = { 0 };
+	blend.BlendOp = AC_SRC_OVER;
+	blend.BlendFlags = 0;
+	blend.SourceConstantAlpha = 255;
+	blend.AlphaFormat = AC_SRC_ALPHA;
+
+	// Paint the window (in the right location) with the alpha-blended bitmap
+	UpdateLayeredWindow(m_hWnd, hdcScreen, &ptScreen, &size, hdcMem, &ptSrc, RGB(0, 0, 0), &blend, ULW_ALPHA);
+
+	SelectBitmap(hdcMem, hbmOld);
+	DeleteDC(hdcMem);
+	ReleaseDC(NULL, hdcScreen);
+}
 
 int YasivWindow::SnapX(int x, bool* snaped)
 {
@@ -675,5 +744,5 @@ void YasivWindow::Import(std::wistream& in)
 	m_iImagePosX = ix;
 	m_iImagePosY = iy;
 
-	MoveWindow(m_hWnd, wl, wt, ww, wh, TRUE);
+	UpdateWindow(wl, wt, ww, wh);
 }

@@ -1,13 +1,15 @@
 #include "YasivImage.h"
+#include <memory>
 
 YasivImage::YasivImage(IWICImagingFactory* IWICFactory)
-: m_hDIBBitmap(nullptr)
-, m_pIWICFactory(IWICFactory)
-, m_pOriginalBitmapSource(nullptr)
-, m_pTempBitmapSource(nullptr)
-, m_iCurrentWidth(0)
-, m_iCurrentHeight(0)
-, m_iRotation(0)
+	: m_hDIBBitmap(nullptr)
+	, m_pIWICFactory(IWICFactory)
+	, m_pOriginalBitmapSource(nullptr)
+	, m_pTempBitmapSource(nullptr)
+	, m_iCurrentWidth(0)
+	, m_iCurrentHeight(0)
+	, m_iRotation(0)
+	, m_bPremultipliedAlpha(false)
 {
 }
 
@@ -164,9 +166,9 @@ HRESULT YasivImage::ConvertBitmapSource(int width, int height, int rotation, boo
 		{
 			hr = pConverter->Initialize(
 				pScaler,                         // Input bitmap to convert
-				GUID_WICPixelFormat32bppBGR,     // Destination pixel format
+				GUID_WICPixelFormat32bppBGR,   // Destination pixel format
 				WICBitmapDitherTypeNone,         // Specified dither patterm
-				nullptr,                            // Specify a particular palette 
+				nullptr,                         // Specify a particular palette 
 				0.f,                             // Alpha threshold
 				WICBitmapPaletteTypeCustom       // Palette translation type
 				);
@@ -181,7 +183,7 @@ HRESULT YasivImage::ConvertBitmapSource(int width, int height, int rotation, boo
 				if (SUCCEEDED(hr))
 					hr = pFlipRotator->Initialize(pConverter, static_cast<WICBitmapTransformOptions>(rotation));
 
-				// Store the converted bitmap as ppToRenderBitmapSource 
+				// Store the converted bitmap as m_pTempBitmapSource 
 				if (SUCCEEDED(hr))
 					hr = pFlipRotator->QueryInterface(IID_PPV_ARGS(&m_pTempBitmapSource));
 
@@ -248,6 +250,7 @@ HRESULT YasivImage::CreateDIBSectionFromBitmapSource()
             ReleaseDC(nullptr, hdcScreen);
 
             hr = m_hDIBBitmap ? S_OK : E_FAIL;
+			m_bPremultipliedAlpha = false;
         }
     }
 
@@ -316,8 +319,11 @@ HRESULT YasivImage::GetCurrentSize(UINT* width, UINT* height)
 	return S_OK;
 }
 
-void YasivImage::TestBlur()
+void YasivImage::PremultiplyAlpha()
 {
+	if (m_bPremultipliedAlpha)
+		return;
+
 	UINT uw, uh;
 	if(FAILED(GetCurrentSize(&uw, &uh)))
 		return;
@@ -336,10 +342,9 @@ void YasivImage::TestBlur()
     bminfo.bmiHeader.biCompression  = BI_RGB;
 
 	int size = w * h * 4;
-	unsigned char* buffer = new unsigned char[size];
-	unsigned char* buffer2 = new unsigned char[size];
-	memset(buffer2, 0, size);
-	GetDIBits(hdcScreen, m_hDIBBitmap, 0, h, buffer, &bminfo, DIB_RGB_COLORS);
+	auto buffer = std::unique_ptr<unsigned char>(new unsigned char[size]);
+	auto bufferPtr = buffer.get();
+	GetDIBits(hdcScreen, m_hDIBBitmap, 0, h, bufferPtr, &bminfo, DIB_RGB_COLORS);
 
 	const int r = 3;
 
@@ -347,32 +352,12 @@ void YasivImage::TestBlur()
 	{
 		for(int x=0; x<w; x++)
 		{
-			long sum[3];
-			int n=0;
-			for(int i=0; i<3; i++)
-				sum[i] = 0;
-
-			for(int iy=max(y-r, 0); iy<min(y+r+1, h); iy++)
-			{
-				for(int ix=max(x-r, 0); ix<min(x+r+1, w); ix++)
-				{
-					int index2 = (iy*w+ix)*4;
-					for(int i=0; i<3; i++)
-						sum[i] += buffer[index2+i];
-					n++;
-				}
-			}
-	
-			int index = (y*w+x)*4;
-			n = max(n+1, 1);
-			
-			for(int i=0; i<3; i++)
-				buffer2[index+i] = static_cast<unsigned char>(sum[i] / n);
+			int index = (y*w + x) * 4;
+			for (int i = 0; i<3; i++)
+				bufferPtr[index + i] = bufferPtr[index + i] * bufferPtr[index + 3] / 255;
 		}
 	}
 
-	SetDIBits(hdcScreen, m_hDIBBitmap, 0, h, buffer2, &bminfo, DIB_RGB_COLORS);
-
-	delete[] buffer;
-	delete[] buffer2;
+	SetDIBits(hdcScreen, m_hDIBBitmap, 0, h, bufferPtr, &bminfo, DIB_RGB_COLORS);
+	m_bPremultipliedAlpha = true;
 }

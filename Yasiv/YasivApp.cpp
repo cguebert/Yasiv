@@ -109,15 +109,15 @@ DWORD WINAPI SleepProc(LPVOID lpParam)
 }
 
 YasivApp::YasivApp()
-: m_hSingletonEvent(NULL)
-, m_hSingletonSignal(NULL)
-, m_hSingletonMap(NULL)
-, m_hSingletonMutex(NULL)
-, m_pSingletonData(NULL)
-, m_hInst(NULL)
-, m_hWnd(NULL)
-, m_pIWICFactory(NULL)
-, m_hCommandLineMutex(NULL)
+	: m_hSingletonEvent(NULL)
+	, m_hSingletonSignal(NULL)
+	, m_hSingletonMap(NULL)
+	, m_hSingletonMutex(NULL)
+	, m_pSingletonData(NULL)
+	, m_hInst(NULL)
+	, m_hWnd(NULL)
+	, m_pIWICFactory(NULL)
+	, m_hCommandLineMutex(NULL)
 {
 }
 
@@ -241,22 +241,7 @@ HRESULT YasivApp::Initialize(HINSTANCE hInstance)
         m_hInst = hInstance;
 
         hr = RegisterClassEx(&wcex) ? S_OK : E_FAIL;
-/*
-		m_hWnd = CreateWindow( 
-			L"Yasiv",        // name of window class 
-			L"Hidden window",     // title-bar string 
-			WS_OVERLAPPEDWINDOW, // top-level window 
-			CW_USEDEFAULT,       // default horizontal position 
-			CW_USEDEFAULT,       // default vertical position 
-			CW_USEDEFAULT,       // default width 
-			CW_USEDEFAULT,       // default height 
-			(HWND) NULL,         // no owner window 
-			(HMENU) NULL,        // use class menu 
-			hInstance,           // handle to application instance 
-			(LPVOID) NULL);      // no window-creation data 
 
-		ShowWindow(m_hWnd, SW_HIDE); 
-*/
 		// Do we want to open a file now ?
 		ParseCommandLine(GetCommandLineW());
     }
@@ -370,8 +355,6 @@ void YasivApp::AllWindowsToTop()
 
 int YasivApp::SnapX(YasivWindow* pWindow, int x, bool* snaped)
 {
-	if(snaped) *snaped = false;
-
 	if(snaped) *snaped = true;
 	RECT WorkArea; 
 	SystemParametersInfo(SPI_GETWORKAREA, 0, &WorkArea, 0);
@@ -401,8 +384,6 @@ int YasivApp::SnapX(YasivWindow* pWindow, int x, bool* snaped)
 
 int YasivApp::SnapY(YasivWindow* pWindow, int y, bool* snaped)
 {
-	if(snaped) *snaped = false;
-
 	if(snaped) *snaped = true;
 	RECT WorkArea; 
 	SystemParametersInfo(SPI_GETWORKAREA, 0, &WorkArea, 0);

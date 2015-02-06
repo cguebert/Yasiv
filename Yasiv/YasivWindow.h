@@ -26,7 +26,7 @@ private:
 	HWND m_hWnd;
 
 	YasivImage m_Image;
-	bool m_bSnap, m_bActionInWindow;
+	bool m_bSnap, m_bActionInWindow, m_bDrawTransparent;
 	RECT m_rcMoving;
 	int m_iImagePosX, m_iImagePosY;
 
@@ -49,6 +49,7 @@ private:
 
     LRESULT OnPaint(HWND hWnd);
 	LRESULT OnKeyDown(HWND hWnd, WPARAM wParam);
+	void UpdateWindow(int x, int y, int w, int h);
 	
 	int SnapX(int x, bool* snaped=NULL);
 	int SnapY(int y, bool* snaped=NULL);
