@@ -47,7 +47,7 @@ public:
 	UINT GetRotation() { return m_iRotation; }
 	void SetRotation(UINT rot) { m_iRotation = rot; }
 	std::wstring GetFilePath() { return m_sFilePath; }
-	void PremultiplyAlpha();
+	void PremultiplyAlpha(bool multiply = true);
 
 private:
     BOOL LocateImageFile(HWND hWnd, LPWSTR pszFileName, DWORD cbFileName);

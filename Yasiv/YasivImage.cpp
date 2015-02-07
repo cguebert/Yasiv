@@ -250,7 +250,6 @@ HRESULT YasivImage::CreateDIBSectionFromBitmapSource()
             ReleaseDC(nullptr, hdcScreen);
 
             hr = m_hDIBBitmap ? S_OK : E_FAIL;
-			m_bPremultipliedAlpha = false;
         }
     }
 
@@ -272,6 +271,12 @@ HRESULT YasivImage::CreateDIBSectionFromBitmapSource()
             cbStride,
             cbImage, 
             reinterpret_cast<BYTE *> (pvImageBits));
+
+		if (m_bPremultipliedAlpha)
+		{
+			m_bPremultipliedAlpha = false;
+			PremultiplyAlpha();
+		}
     }
 
     // Image Extraction failed, clear allocated memory
@@ -319,8 +324,16 @@ HRESULT YasivImage::GetCurrentSize(UINT* width, UINT* height)
 	return S_OK;
 }
 
-void YasivImage::PremultiplyAlpha()
+void YasivImage::PremultiplyAlpha(bool multiply)
 {
+	if (!multiply)
+	{
+		m_bPremultipliedAlpha = false;
+		ConvertBitmapSource(m_iCurrentWidth, m_iCurrentHeight, m_iRotation);
+		CreateDIBSectionFromBitmapSource();
+		return;
+	}
+
 	if (m_bPremultipliedAlpha)
 		return;
 

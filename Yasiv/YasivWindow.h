@@ -21,12 +21,14 @@ public:
 	void Export(std::wostream& out);
 	void Import(std::wistream& in);
 
+	void SetDrawTransparent(bool transparent);
+
 private:
 	YasivApp* m_pApp;
 	HWND m_hWnd;
 
 	YasivImage m_Image;
-	bool m_bSnap, m_bActionInWindow, m_bDrawTransparent;
+	bool m_bSnap, m_bActionInWindow, m_bDrawTransparent, m_bShiftDepressed;
 	RECT m_rcMoving;
 	int m_iImagePosX, m_iImagePosY;
 
@@ -49,7 +51,9 @@ private:
 
     LRESULT OnPaint(HWND hWnd);
 	LRESULT OnKeyDown(HWND hWnd, WPARAM wParam);
+	LRESULT OnKeyUp(HWND hWnd, WPARAM wParam);
 	void UpdateWindow(int x, int y, int w, int h);
+	void InvalidateWindow();
 	
 	int SnapX(int x, bool* snaped=NULL);
 	int SnapY(int y, bool* snaped=NULL);

@@ -348,9 +348,13 @@ void YasivApp::CloseWindow(YasivWindow* pWindow)
 void YasivApp::AllWindowsToTop()
 {
 	for(YasivWindow *pWindow : m_Windows)
-	{
 		SetForegroundWindow(pWindow->GetWnd());
-	}
+}
+
+void YasivApp::AllWindowsSetTransparent(bool transparent)
+{
+	for (YasivWindow *pWindow : m_Windows)
+		pWindow->SetDrawTransparent(transparent);
 }
 
 int YasivApp::SnapX(YasivWindow* pWindow, int x, bool* snaped)

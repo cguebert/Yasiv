@@ -26,6 +26,7 @@ public:
 	void OpenNewWindow(bool OpenImage=false);
 	void CloseWindow(YasivWindow* pWindow);
 	void AllWindowsToTop();
+	void AllWindowsSetTransparent(bool transparent);
 
 	int SnapX(YasivWindow* pWindow, int x, bool* snaped=NULL);
 	int SnapY(YasivWindow* pWindow, int y, bool* snaped=NULL);

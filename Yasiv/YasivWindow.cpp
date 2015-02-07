@@ -8,6 +8,7 @@ YasivWindow::YasivWindow(YasivApp* app, IWICImagingFactory* factory)
 	, m_bSnap(true)
 	, m_bActionInWindow(false)
 	, m_bDrawTransparent(false)
+	, m_bShiftDepressed(false)
 	, m_iImagePosX(0)
 	, m_iImagePosY(0)
 {
@@ -126,6 +127,10 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			return OnKeyDown(hWnd, wParam);
 		}
+		case WM_KEYUP:
+		{
+			return OnKeyUp(hWnd, wParam);
+		}
 		case WM_LBUTTONDOWN:
 		{
 			if(wParam & MK_LBUTTON)
@@ -177,7 +182,7 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					m_iImagePosX = m_iImagePosY = 0;
 			}
 
-			break;
+			return 0;
 		}
  		case WM_LBUTTONUP:
 		{
@@ -191,12 +196,12 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						if(!m_bActionInWindow)
 							m_Image.Resize(rcClient.right - rcClient.left, rcClient.bottom - rcClient.top, false);
-						InvalidateRect(hWnd, &rcClient, TRUE);
 					}
 				}
 				m_Action = NONE;
+				InvalidateWindow();
 			}
-			break;
+			return 0;
 		}
 		case WM_MOUSEMOVE:
 		{
@@ -218,26 +223,26 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					w -= dX;
 					KeepImageRatioH(w, h);
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case RESIZE_TOP:
 					dY = SnapY(m_rcMoving.top+dY) - m_rcMoving.top;
 					m_rcMoving.top += dY;
 					h -= dY;
 					KeepImageRatioW(w, h);
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case RESIZE_RIGHT:
 					dX = SnapX(m_rcMoving.right+dX) - m_rcMoving.right;
 					w += dX;
 					KeepImageRatioH(w, h);
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case RESIZE_BOTTOM:
 					dY = SnapY(m_rcMoving.bottom+dY) - m_rcMoving.bottom;
 					h += dY;
 					KeepImageRatioW(w, h);
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case RESIZE_TOPLEFT:
 					dX = SnapX(m_rcMoving.left+dX) - m_rcMoving.left;
 					dY = SnapY(m_rcMoving.top+dY) - m_rcMoving.top;
@@ -246,7 +251,7 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					m_rcMoving.left = m_rcMoving.right - w; 
 					m_rcMoving.top =  m_rcMoving.bottom - h;
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case RESIZE_TOPRIGHT:
 					dX = SnapX(m_rcMoving.right+dX) - m_rcMoving.right;
 					dY = SnapY(m_rcMoving.top+dY) - m_rcMoving.top;
@@ -254,7 +259,7 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					KeepImageRatio(w, h);
 					m_rcMoving.top =  m_rcMoving.bottom - h;
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case RESIZE_BOTTOMLEFT:
 					dX = SnapX(m_rcMoving.left+dX) - m_rcMoving.left;
 					dY = SnapY(m_rcMoving.bottom+dY) - m_rcMoving.bottom;
@@ -262,14 +267,14 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					KeepImageRatio(w, h);
 					m_rcMoving.left = m_rcMoving.right - w; 
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case RESIZE_BOTTOMRIGHT:
 					dX = SnapX(m_rcMoving.right+dX) - m_rcMoving.right;
 					dY = SnapY(m_rcMoving.bottom+dY) - m_rcMoving.bottom;
 					w += dX; h += dY;
 					KeepImageRatio(w, h);
 					UpdateWindow(m_rcMoving.left, m_rcMoving.top, w, h);
-					break;
+					return 0;
 				case MOVING:
 				{
 					if(m_bActionInWindow)	// Moving the image inside the window
@@ -281,7 +286,7 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							int w = rcClient.right-rcClient.left, h = rcClient.bottom-rcClient.top;
 							m_iImagePosX = clamp(m_iImagePosX+dX, w-iw, 0);
 							m_iImagePosY = clamp(m_iImagePosY+dY, h-ih, 0);
-							InvalidateRect(hWnd, nullptr, FALSE);		
+							InvalidateWindow();
 							m_iPreviousX = xPos;
 							m_iPreviousY = yPos;
 						}
@@ -297,16 +302,16 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						m_rcMoving.top += dY;	m_rcMoving.bottom += dY;
 						MoveWindow(hWnd, m_rcMoving.left, m_rcMoving.top, w, h, FALSE);
 					}
-					break;
+					return 0;
 				}
 			}
 
-			break;
+			return 0;
 		}
         default:
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
-    return 0;
+    return 1;
 }
 
 LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
@@ -426,7 +431,7 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 					m_iImagePosY = ww - iw - tmp;
 				}
 			}
-			break;
+			return 0;
 		}
 		case 'N': // New blank window
 		{
@@ -474,7 +479,7 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 					m_iImagePosY = tmp;
 				}
 			}
-			break;
+			return 0;
 		}
 		case 'S' : // Show all windows
 		{
@@ -483,24 +488,11 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 		}
 		case 'T':
 		{
-			m_bDrawTransparent = !m_bDrawTransparent;
-
-			if (m_bDrawTransparent)
-			{
-				m_Image.PremultiplyAlpha();
-				SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED);
-			}
+			if (m_bShiftDepressed)
+				m_pApp->AllWindowsSetTransparent(!m_bDrawTransparent);
 			else
-				SetWindowLong(hWnd, GWL_EXSTYLE, 0);
-			
-			// Update the window in the same position
-			RECT rcWnd;
-			GetWindowRect(hWnd, &rcWnd);
-			InvalidateRect(hWnd, nullptr, TRUE);
-			int w = rcWnd.right - rcWnd.left, h = rcWnd.bottom - rcWnd.top;
-			UpdateWindow(rcWnd.left, rcWnd.top, w, h);
-			
-			break;
+				SetDrawTransparent(!m_bDrawTransparent);
+			return 0;
 		}
 		case 'V': // Resize to maximize the vertical size
 		{
@@ -536,6 +528,23 @@ LRESULT YasivWindow::OnKeyDown(HWND hWnd, WPARAM wParam)
 			m_pApp->CloseWindow(this);
 			return 0;
 		}
+		case VK_SHIFT:
+		{
+			m_bShiftDepressed = true;
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+LRESULT YasivWindow::OnKeyUp(HWND hWnd, WPARAM wParam)
+{
+	switch (wParam)
+	{
+	case VK_SHIFT:
+		m_bShiftDepressed = false;
+		return 0;
 	}
 
 	return 1;
@@ -611,6 +620,9 @@ void YasivWindow::UpdateWindow(int x, int y, int w, int h)
 		return;
 	}
 
+	if (!m_bActionInWindow && m_Action > MOVING)
+		m_Image.Resize(w, h, true);
+
 	HDC hdcScreen = GetDC(NULL);
 	HDC hdcMem = CreateCompatibleDC(hdcScreen);
 	HBITMAP hbmOld = SelectBitmap(hdcMem, m_Image.GetBitmap());
@@ -631,6 +643,33 @@ void YasivWindow::UpdateWindow(int x, int y, int w, int h)
 	SelectBitmap(hdcMem, hbmOld);
 	DeleteDC(hdcMem);
 	ReleaseDC(NULL, hdcScreen);
+}
+
+void YasivWindow::SetDrawTransparent(bool transparent)
+{
+	m_bDrawTransparent = transparent;
+	m_Image.PremultiplyAlpha(m_bDrawTransparent);
+
+	if (m_bDrawTransparent)
+		SetWindowLong(m_hWnd, GWL_EXSTYLE, WS_EX_LAYERED);
+	else
+		SetWindowLong(m_hWnd, GWL_EXSTYLE, 0);
+
+	InvalidateWindow();
+}
+
+void YasivWindow::InvalidateWindow()
+{
+	InvalidateRect(m_hWnd, nullptr, TRUE);
+
+	// Update the window in the same position
+	if (m_bDrawTransparent)
+	{
+		RECT rcWnd;
+		GetWindowRect(m_hWnd, &rcWnd);
+		int w = rcWnd.right - rcWnd.left, h = rcWnd.bottom - rcWnd.top;
+		UpdateWindow(rcWnd.left, rcWnd.top, w, h);
+	}
 }
 
 int YasivWindow::SnapX(int x, bool* snaped)
