@@ -123,8 +123,9 @@ YasivApp::YasivApp()
 
 YasivApp::~YasivApp()
 {
-	for(WindowsIterator iter = m_Windows.begin(); iter != m_Windows.end(); iter++)
-		delete *iter;
+	for(auto pWindow : m_Windows)
+		delete pWindow;
+
 	SafeRelease(m_pIWICFactory);
 
 	if(m_hSingletonMap)
@@ -339,7 +340,7 @@ void YasivApp::OpenNewWindow(bool OpenImage)
 void YasivApp::CloseWindow(YasivWindow* pWindow)
 {
 	DestroyWindow(pWindow->GetWnd());
-	m_Windows.remove(pWindow);
+	m_Windows.erase(std::find(m_Windows.begin(), m_Windows.end(), pWindow));
 	delete pWindow;
 	if(m_Windows.empty())
 		PostQuitMessage(0); 
@@ -357,58 +358,63 @@ void YasivApp::AllWindowsSetTransparent(bool transparent)
 		pWindow->SetDrawTransparent(transparent);
 }
 
-int YasivApp::SnapX(YasivWindow* pWindow, int x, bool* snaped)
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
-	if(snaped) *snaped = true;
-	RECT WorkArea; 
-	SystemParametersInfo(SPI_GETWORKAREA, 0, &WorkArea, 0);
-	if(abs(x-WorkArea.left) < snapDistance)
-		return WorkArea.left;
-	if(abs(x-WorkArea.right) < snapDistance)
-		return WorkArea.right;
+	std::vector<RECT>* pRects = reinterpret_cast<std::vector<RECT>*>(dwData);
+	MONITORINFO mi;
+	mi.cbSize = sizeof(mi);
+	GetMonitorInfo(hMonitor, &mi);
+	pRects->push_back(mi.rcWork);
+	pRects->push_back(mi.rcMonitor);
 
-	for(WindowsIterator iter = m_Windows.begin(); iter!=m_Windows.end(); iter++)
+	return TRUE;
+}
+
+void YasivApp::PrepareSnapData(YasivWindow* pCurrentWindow)
+{
+	m_SnapRects.clear();
+
+	// Get monitors info
+	EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, reinterpret_cast<LPARAM>(&m_SnapRects));
+
+	// Get other windows geometry
+	for (auto pWindow : m_Windows)
 	{
-		if(*iter == pWindow)
+		if (pWindow == pCurrentWindow)
 			continue;
 
-		RECT rcWnd;
-		if(GetWindowRect((*iter)->GetWnd(), &rcWnd))
-		{
-			if(abs(x-rcWnd.left) < snapDistance)
-				return rcWnd.left;
-			if(abs(x-rcWnd.right) < snapDistance)
-				return rcWnd.right;
-		}
+		RECT rect;
+		if (GetWindowRect(pWindow->GetWnd(), &rect))
+			m_SnapRects.push_back(rect);
+	}
+}
+
+int YasivApp::SnapX(int x, bool* snaped)
+{
+	if(snaped) *snaped = true;
+
+	for (auto rect : m_SnapRects)
+	{
+		if (abs(x - rect.left) < snapDistance)
+			return rect.left;
+		if (abs(x - rect.right) < snapDistance)
+			return rect.right;
 	}
 
 	if(snaped) *snaped = false;
 	return x;
 }
 
-int YasivApp::SnapY(YasivWindow* pWindow, int y, bool* snaped)
+int YasivApp::SnapY(int y, bool* snaped)
 {
 	if(snaped) *snaped = true;
-	RECT WorkArea; 
-	SystemParametersInfo(SPI_GETWORKAREA, 0, &WorkArea, 0);
-	if(abs(y-WorkArea.top) < snapDistance)
-		return WorkArea.top;
-	if(abs(y-WorkArea.bottom) < snapDistance)
-		return WorkArea.bottom;
 
-	for(WindowsIterator iter = m_Windows.begin(); iter!=m_Windows.end(); iter++)
+	for (auto rect : m_SnapRects)
 	{
-		if(*iter == pWindow)
-			continue;
-
-		RECT rcWnd;
-		if(GetWindowRect((*iter)->GetWnd(), &rcWnd))
-		{
-			if(abs(y-rcWnd.top) < snapDistance)
-				return rcWnd.top;
-			if(abs(y-rcWnd.bottom) < snapDistance)
-				return rcWnd.bottom;
-		}
+		if (abs(y - rect.top) < snapDistance)
+			return rect.top;
+		if (abs(y - rect.bottom) < snapDistance)
+			return rect.bottom;
 	}
 
 	if(snaped) *snaped = false;
@@ -440,13 +446,12 @@ void YasivApp::ImportLayout(LPCWSTR pszFileName)
 	}
 
 	// Close previously opened windows
-	while(!m_Windows.empty())
+	for (auto pWindow : m_Windows)
 	{
-		YasivWindow* pWindow = m_Windows.front();
-		m_Windows.pop_front();
 		DestroyWindow(pWindow->GetWnd());
 		delete pWindow;
 	}
+	m_Windows.clear();
 
 	std::wifstream file(pszFileName);
 
@@ -497,6 +502,6 @@ void YasivApp::ExportLayout(LPCWSTR pszFileName)
 
 	int nb = m_Windows.size();
 	file << nb << std::endl;
-	for(WindowsIterator iter=m_Windows.begin(); iter!=m_Windows.end(); iter++)
-		(*iter)->Export(file);
+	for(auto pWindow : m_Windows)
+		pWindow->Export(file);
 }

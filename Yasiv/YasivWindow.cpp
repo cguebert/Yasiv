@@ -180,6 +180,8 @@ LRESULT YasivWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 				if(m_Action != MOVING && !m_bActionInWindow)
 					m_iImagePosX = m_iImagePosY = 0;
+
+				m_pApp->PrepareSnapData(this);
 			}
 
 			return 0;
@@ -562,7 +564,7 @@ LRESULT YasivWindow::OnPaint(HWND hWnd)
 		HRESULT hr = S_OK;
 		hr = GetClientRect(hWnd, &rcClient) ? S_OK: E_FAIL;
 		int cw = rcClient.right-rcClient.left, ch = rcClient.bottom-rcClient.top;
-		if (!m_bDrawTransparent && SUCCEEDED(hr))
+	/*	if (!m_bDrawTransparent && SUCCEEDED(hr))
 		{
 			HBRUSH hbBk, hbrOld;
 			hbBk = CreateSolidBrush(0xFF000000);
@@ -573,7 +575,7 @@ LRESULT YasivWindow::OnPaint(HWND hWnd)
 			SelectObject(hdc, hbrOld);
 			DeleteObject(hbBk);
 		}
-
+		*/
         // Create a memory device context
         HDC hdcMem = CreateCompatibleDC(nullptr);
         if (hdcMem)
@@ -681,7 +683,7 @@ int YasivWindow::SnapX(int x, bool* snaped)
 		return x;
 	}
 	else
-		return m_pApp->SnapX(this, x, snaped);
+		return m_pApp->SnapX(x, snaped);
 }
 
 int YasivWindow::SnapY(int y, bool* snaped)
@@ -693,7 +695,7 @@ int YasivWindow::SnapY(int y, bool* snaped)
 		return y;
 	}
 	else
-		return m_pApp->SnapY(this, y, snaped);
+		return m_pApp->SnapY(y, snaped);
 }
 
 void YasivWindow::KeepImageRatio(int& w, int& h)
