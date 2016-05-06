@@ -269,6 +269,7 @@ void YasivApp::ParseCommandLine(LPCWSTR pszCommandLine)
 				YasivWindow* pWindow = new YasivWindow(this, m_pIWICFactory);
 				m_Windows.push_back(pWindow);
 				pWindow->OpenImage(szArglist[i]);
+				SetForegroundWindow(pWindow->GetWnd());
 			}
 		}
 	}
@@ -278,6 +279,7 @@ void YasivApp::ParseCommandLine(LPCWSTR pszCommandLine)
 		YasivWindow* pWindow = new YasivWindow(this, m_pIWICFactory);
 		m_Windows.push_back(pWindow);
 		pWindow->OpenImage();
+		SetForegroundWindow(pWindow->GetWnd());
 	}
 	LocalFree(szArglist);
 }
